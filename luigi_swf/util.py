@@ -121,7 +121,7 @@ def get_luigi_params(task):
             continue
         param_type = getattr(task.__class__, attr, None)
         if isinstance(param_type, luigi.Parameter):
-            result[attr] = getattr(task, attr)
+            result[attr] = param_type.serialize(getattr(task, attr))
     return result
 
 
@@ -171,10 +171,6 @@ def get_task_configurations(task, wf_run_id=None, include_obj=False):
     for dep in deps:
         tasks.update(get_task_configurations(dep, wf_run_id, include_obj))
     return tasks
-
-
-def dt_from_iso(iso):
-    return datetime.date(*map(int, iso.split('-')))
 
 
 def dictsortkey(d):

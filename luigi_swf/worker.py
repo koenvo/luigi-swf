@@ -13,7 +13,7 @@ import luigi
 import luigi.configuration
 
 from .util import default_log_format, get_class, kill_from_pid_file, \
-    SingleWaitingLockPidFile, dt_from_iso
+    SingleWaitingLockPidFile
 
 
 logger = logging.getLogger(__name__)
@@ -54,10 +54,7 @@ class LuigiSwfWorker(swf.ActivityWorker):
             for param_name, param_cls in task_params:
                 if param_name == 'pool':
                     continue
-                if isinstance(param_cls, luigi.DateParameter):
-                    kwargs[param_name] = dt_from_iso(input_params[param_name])
-                else:
-                    kwargs[param_name] = input_params[param_name]
+                kwargs[param_name] = param_cls.parse(input_params[param_name])
             task = task_cls(**kwargs)
             if hasattr(task, 'register_activity_worker'):
                 task.register_activity_worker(self, activity_task)

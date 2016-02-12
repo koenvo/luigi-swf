@@ -15,7 +15,7 @@ import luigi.configuration
 from six import iteritems
 
 from .util import default_log_format, dthandler, kill_from_pid_file, \
-    SingleWaitingLockPidFile, get_task_configurations, get_class, dt_from_iso
+    SingleWaitingLockPidFile, get_task_configurations, get_class
 
 
 logger = logging.getLogger(__name__)
@@ -278,10 +278,7 @@ class LuigiSwfDecider(swf.Decider):
         for param_name, param_cls in wf_cls.get_params():
             if param_name == 'pool':
                 continue
-            if isinstance(param_cls, luigi.DateParameter):
-                kwargs[param_name] = dt_from_iso(wf_params[param_name])
-            else:
-                kwargs[param_name] = wf_params[param_name]
+            kwargs[param_name] = param_cls.parse(wf_params[param_name])
         wf_task = wf_cls(**kwargs)
         return get_task_configurations(wf_task, wf_run_id, include_obj=True)
 

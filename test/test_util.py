@@ -46,7 +46,7 @@ def test_get_luigi_params():
     params = util.get_luigi_params(t)
 
     # Test
-    assert params == {'dt': datetime.date(2050, 1, 1)}
+    assert params == {'dt': '2050-01-01'}
 
 
 def test_get_task_configurations():
@@ -88,15 +88,3 @@ def test_get_task_configurations():
         }
     }
     assert all_tasks == expected
-
-
-def test_dt_from_iso():
-    # Setup
-    iso = '2050-01-02'
-
-    # Execute
-    dt = util.dt_from_iso(iso)
-
-    # Test
-    expected = datetime.date(2050, 1, 2)
-    assert dt == expected
