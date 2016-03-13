@@ -107,7 +107,7 @@ class LuigiSwfExecutor(object):
                 print_(swf_entity.__class__.__name__, swf_entity.name,
                        'already exists')
 
-    def execute(self):
+    def execute(self, **kwargs):
         """Initiates a workflow execution on SWF and returns immediately
 
         Run :meth:`register` first.
@@ -130,5 +130,6 @@ class LuigiSwfExecutor(object):
         logger.info('LuigiSwfExecutor().execute(), executing workflow %s',
                     wf_id)
         execution = wf_type.start(workflow_id=wf_id, input=wf_input,
-                                  execution_start_to_close_timeout=timeout)
+                                  execution_start_to_close_timeout=timeout,
+                                  **kwargs)
         return execution
