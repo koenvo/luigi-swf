@@ -62,7 +62,7 @@ class LuigiSwfWorker(swf.ActivityWorker):
                     activity_task['workflowExecution']['runId'])
             if task.complete():
                 result = 'Did not run (task.complete() returned true)'
-                logger.debug('LuigiSwfWorker().run(), %s, %s', result)
+                logger.debug('LuigiSwfWorker().run(), %s', result)
                 self.complete(result=result)
                 return
             task.run()
