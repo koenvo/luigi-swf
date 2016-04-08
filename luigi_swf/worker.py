@@ -4,13 +4,14 @@ import os
 import os.path
 import signal
 from subprocess import call
-from time import sleep
+from time import sleep, time
 import traceback
 
 import boto.swf.layer2 as swf
 import daemon
 import luigi
 import luigi.configuration
+from luigi.event import Event
 
 from .util import default_log_format, get_class, kill_from_pid_file, \
     SingleWaitingLockPidFile
@@ -20,6 +21,14 @@ logger = logging.getLogger(__name__)
 
 
 seconds = 1.
+
+
+class TaskNotComplete(Exception):
+    pass
+
+
+class TaskCancelled(Exception):
+    pass
 
 
 class LuigiSwfWorker(swf.ActivityWorker):
@@ -43,6 +52,7 @@ class LuigiSwfWorker(swf.ActivityWorker):
             logger.debug('LuigiSwfWorker().run(), poll timed out')
             return
         task = None
+        t0 = time()
         try:
             logger.info('LuigiSwfWorker().run(), %s, processing',
                         activity_task['activityId'])
@@ -60,23 +70,28 @@ class LuigiSwfWorker(swf.ActivityWorker):
                 task.register_activity_worker(self, activity_task)
             setattr(task, 'swf_wf_run_id',
                     activity_task['workflowExecution']['runId'])
-            if task.complete():
+
+            task.trigger_event(Event.START, task)
+            if not task.complete():
+                task.run()
+            else:
                 result = 'Did not run (task.complete() returned true)'
                 logger.debug('LuigiSwfWorker().run(), %s', result)
-                self.complete(result=result)
-                return
-            task.run()
+
             if not getattr(task, 'cancel_acked', False):
                 task.on_success()
-                task_completed = task.complete()
+                if not task.complete():
+                    raise TaskNotComplete("task complete() returned false")
             else:
-                task_completed = False
-        except Exception as error:
+                raise TaskCancelled("Task cancelled")
+        except KeyboardInterrupt:
+            raise
+        except BaseException as ex:
             tb = traceback.format_exc()
             message = None
             if task is not None:
                 try:
-                    message = task.on_failure(error)
+                    message = task.on_failure(ex)
                 except:
                     message = ('on_failure() failed: \n' +
                                traceback.format_exc())
@@ -84,19 +99,17 @@ class LuigiSwfWorker(swf.ActivityWorker):
                 message = '(no message)'
             logger.error('LuigiSwfWorker().run(), %s, error:\n%s',
                          activity_task['activityId'], tb)
-            details = (tb + '\n\n\n' + str(error) + '\n\n\non_failure():\n' +
+            details = (tb + '\n\n\n' + str(ex) + '\n\n\non_failure():\n' +
                        message)
-            self.fail(reason=str(error)[:255], details=details[:32767])
-            raise
-        if task_completed:
+
+            self.fail(reason=str(ex)[:255], details=details[:32767])
+
+            task.trigger_event(Event.FAILURE, self.task, ex)
+        else:
             self.complete()
-            logger.info('LuigiSwfWorker().run(), completed %s',
-                        activity_task['activityId'])
-        elif not getattr(task, 'cancel_acked', False):
-            reason = 'complete() returned false after running'
-            logger.error('LuigiSwfWorker().run(), %s, failed (%s)',
-                         activity_task['activityId'], reason)
-            self.fail(reason=reason)
+
+            task.trigger_event(Event.PROCESSING_TIME, task, time() - t0)
+            task.trigger_event(Event.SUCCESS, task)
 
 
 class WorkerServer(object):
