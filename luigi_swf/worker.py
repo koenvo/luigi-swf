@@ -104,7 +104,7 @@ class LuigiSwfWorker(swf.ActivityWorker):
 
             self.fail(reason=str(ex)[:255], details=details[:32767])
 
-            task.trigger_event(Event.FAILURE, self.task, ex)
+            task.trigger_event(Event.FAILURE, task, ex)
         else:
             self.complete()
 
